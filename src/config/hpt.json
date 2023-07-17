@@ -14,7 +14,7 @@
       "name": "activation",
       "short_desc": "Activation function for hidden layers",
       "type": "categorical",
-      "categories": ["relu", "tanh"]
+      "categories": ["relu", "tanh", "none"]
     }
   ]
 }
