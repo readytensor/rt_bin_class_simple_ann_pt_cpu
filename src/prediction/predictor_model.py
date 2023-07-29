@@ -479,12 +479,13 @@ class Classifier:
         return classifier
 
     def __str__(self):
+        # sort params alphabetically for unit test to run successfully
         return (
-            f"Model name: {self.model_name}\n"
-            f"D: {self.D}\n"
-            f"K: {self.K}\n"
-            f"lr: {self.lr}\n"
-            f"activation: {self.activation}"
+            f"Model name: {self.model_name} ("
+            f"activation: {self.activation}, "
+            f"D: {self.D}, "
+            f"K: {self.K}, "
+            f"lr: {self.lr})"
         )
 
 
