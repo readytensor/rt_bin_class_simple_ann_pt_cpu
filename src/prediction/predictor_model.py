@@ -10,6 +10,7 @@ from sklearn.exceptions import NotFittedError
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset
 import torch.nn.functional as F
+from sklearn.metrics import f1_score
 
 from logger import get_logger
 
@@ -56,7 +57,6 @@ def get_activation(activation: str) -> Callable:
             f"Error: Unrecognized activation type: {activation}. "
             "Must be one of ['relu', 'tanh', 'none']."
         )
-
 
 
 class Net(T.nn.Module):
@@ -191,6 +191,7 @@ class Classifier:
 
     def __init__(
         self,
+        prob_threshold,
         D: Optional[int] = None,
         K: Optional[int] = None,
         lr: float = 1e-3,
@@ -213,6 +214,7 @@ class Classifier:
         self.activation = activation
         self.lr = lr
         self._print_period = 10
+        self.prob_threshold = prob_threshold
         # following are set when fitting to data
         self.net = None
         self.criterion = None
@@ -327,22 +329,21 @@ class Classifier:
                 self.optimizer.step()
 
             # current_loss = loss.item()
-            train_loss = get_loss(
-                self.net, device, train_loader, self.criterion
-            )
+            train_loss = get_loss(self.net, device, train_loader, self.criterion)
             epoch_log = {"epoch": epoch, "train_loss": train_loss}
 
             if valid_loader is not None:
-                val_loss = get_loss(
-                    self.net, device, valid_loader, self.criterion
-                )
+                val_loss = get_loss(self.net, device, valid_loader, self.criterion)
                 epoch_log["val_loss"] = val_loss
 
             # Show progress
             if verbose == 1:
                 if epoch % self._print_period == 0 or epoch == epochs - 1:
-                    val_loss_str = "" if valid_loader is None \
+                    val_loss_str = (
+                        ""
+                        if valid_loader is None
                         else f", val_loss: {np.round(val_loss, 5)}"
+                    )
                     logger.info(
                         f"Epoch: {epoch+1}/{epochs}"
                         f", loss: {np.round(train_loss, 5)}"
@@ -417,26 +418,21 @@ class Classifier:
         """
         self.net.summary()
 
-    def evaluate(self, x_test: pd.DataFrame, y_test: pd.Series) -> float:
-        """
-        Evaluate the model and return the accuracy.
+    def evaluate(self, test_inputs: pd.DataFrame, test_targets: pd.Series) -> float:
+        """Evaluate the classifier and return the accuracy.
 
         Args:
-            x_test (pd.DataFrame): Training inputs.
-            y_test (pd.Series): Training targets.
-
+            test_inputs (pandas.DataFrame): The features of the test data.
+            test_targets (pandas.Series): The labels of the test data.
         Returns:
-            float: Accuracy of the model on test data.
-
-        Raises:
-            NotFittedError: If the model is not fitted yet.
+            float: The accuracy of the classifier.
         """
-        if self.net is not None:
-            predicted_classes = self.predict(x_test)
-            accuracy = np.sum(predicted_classes == y_test) / len(y_test)
-            return accuracy
-        else:
-            raise NotFittedError("Model is not fitted yet.")
+        prob = self.predict_proba(test_inputs)
+        labels = prob[:, 1] > self.prob_threshold
+
+        return f1_score(test_targets, labels)
+
+        raise NotFittedError("Model is not fitted yet.")
 
     def save(self, model_path: str):
         """
@@ -454,6 +450,7 @@ class Classifier:
             "D": self.D,
             "K": self.K,
             "lr": self.lr,
+            "prob_threshold": self.prob_threshold,
             "activation": self.activation,
         }
         joblib.dump(model_params, os.path.join(model_path, MODEL_PARAMS_FNAME))

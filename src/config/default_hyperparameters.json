@@ -1,4 +1,6 @@
 {
   "lr": 1e-3,
-  "activation": "tanh"
+  "activation": "tanh",
+  "prob_threshold": 0.25
+
 }

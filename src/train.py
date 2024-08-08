@@ -143,6 +143,8 @@ def run_training(
                 transformed_train_targets,
                 hyperparameters=tuned_hyperparameters,
             )
+
+            print("Tuned hyperparameters: ", tuned_hyperparameters)
         else:
             # use default hyperparameters to train model
             logger.info("Training classifier...")
@@ -202,4 +204,4 @@ def parse_arguments() -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = parse_arguments()
-    run_training(run_tuning=args.tune)
+    run_training(run_tuning=True)
